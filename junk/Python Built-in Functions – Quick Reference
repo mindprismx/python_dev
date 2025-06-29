@@ -1,0 +1,51 @@
+# Python Built-in Functions – Quick Reference
+
+len(obj)              → size / length
+max(iterable)         → largest element
+min(iterable)         → smallest element
+sum(iterable)         → total of elements
+sorted(iterable)      → new sorted list
+reversed(iterable)    → reverse iterator
+type(obj)             → get type
+isinstance(obj, cls)  → type check
+id(obj)               → memory address
+hash(obj)             → hash value
+all(iterable)         → True if all true
+any(iterable)         → True if any true
+enumerate(iterable)   → index + item pairs
+zip(*iterables)       → tuple pairs
+map(func, iterable)   → apply func to items
+filter(func, iterable)→ keep matching items
+next(iterator)        → get next item
+
+
+# Common Object Methods – Quick Reference
+
+list.append(x)        → add item
+list.extend(iterable) → add multiple items
+list.insert(i, x)     → insert at index
+list.remove(x)        → remove by value
+list.pop(i=-1)        → remove & return item
+list.sort()           → sort in-place
+list.reverse()        → reverse in-place
+list.clear()          → empty the list
+
+str.upper()           → uppercase copy
+str.lower()           → lowercase copy
+str.strip()           → trim whitespace
+str.split(sep)        → split string
+str.replace(a, b)     → replace substrings
+
+dict.get(key)         → safe lookup
+dict.update({})       → merge/update dict
+
+set.add(x)            → add element
+set.remove(x)         → remove element
+
+
+# Notes:
+# - Built-in functions work across multiple types (they’re polymorphic).
+# - Methods are specific to the type (list, str, dict, etc).
+# - list.sort() modifies in place and returns None.
+# - Use sorted(list) if you want a new sorted list.
+# - Use dir(obj) in Python to explore available methods.
