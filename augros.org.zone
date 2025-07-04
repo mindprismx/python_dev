@@ -1,0 +1,30 @@
+$TTL 3600
+@       IN  SOA     mns1.secureserver.net. hostmaster.augros.org. (
+                        2025070301 ; Serial (YYYYMMDDnn)
+                        28800      ; Refresh
+                        7200       ; Retry
+                        604800     ; Expire
+                        600        ; Minimum TTL
+)
+
+        IN  NS      mns01.domaincontrol.com.
+        IN  NS      mns02.domaincontrol.com.
+        IN  NS      mns1.secureserver.net.
+        IN  NS      mns2.secureserver.net.
+
+        IN  A       132.148.29.43
+www     IN  A       132.148.29.43
+aws     IN  A       44.223.11.175
+chooch  IN  A       216.69.157.111
+dude    IN  A       69.65.110.15
+
+ftp     IN  CNAME   www.augros.org.
+google  IN  CNAME   ghs.google.com.
+mail    IN  CNAME   ghs.google.com.
+_domainconnect IN CNAME _domainconnect.gd.domaincontrol.com.
+
+        IN  MX 10   aspmx.l.google.com.
+        IN  MX 20   alt1.aspmx.l.google.com.
+        IN  MX 30   alt2.aspmx.l.google.com.
+        IN  MX 40   aspmx2.googlemail.com.
+        IN  MX 50   aspmx3.googlemail.com.
