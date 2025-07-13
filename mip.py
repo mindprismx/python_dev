@@ -14,4 +14,4 @@ match = re.search(
     response.text,
 )
 if match:
-    print(match.group(1), f"{match.group(2)}{match.group(3)}")
+    print(match.group(1), f"{match.group(2)}.{match.group(3)}")
