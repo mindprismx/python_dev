@@ -4,8 +4,8 @@
 import numpy as np
 import matplotlib.pyplot as plot
 
-max_iter = 300
-grain = 500
+max_iter = 100
+grain = 200
 (xmin, xmax, ymin, ymax) = (-2, 1, -1.5, 1.5)
 
 x = np.linspace(xmin, xmax, grain)
