@@ -1,0 +1,20 @@
+import numpy as np
+
+
+def make_plane(xi, xa, yi, ya, gr):
+    x = np.linspace(xi, xa, gr)
+    y = np.linspace(yi, ya, gr)
+    X, Y = np.meshgrid(x, y)
+    return X + 1j * Y
+
+
+C = 0
+Z = make_plane(-3, 3, -3, 3, 9)
+M = np.full(Z.shape, True, dtype=bool)
+escape = np.zeros(Z.shape, dtype=int)
+
+# this is the loop
+Z[M] = Z[M] ** 2 + C
+gone = (Z.real**2 + Z.imag**2) > 4
+escape[M & gone] = 4
+M[M & gone] = False
