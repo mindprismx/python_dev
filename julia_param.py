@@ -3,19 +3,26 @@
 
 import numpy as np
 from matplotlib.pyplot import imsave, get_cmap
+import matplotlib.pyplot as plt
 from numba import njit
 import os
 
 # Configuration
-WIDTH = 1500
-HEIGHT = 1500
-MAX_ITER = 300
-N_FRAMES = 4320
+res = "hi"
+TBEG, TEND = 0, 1
+cross = True
+
+WIDTH = {"lo": 200, "hi": 1500}
+HEIGHT = {"lo": 200, "hi": 1500}
+MAX_ITER = {"lo": 50, "hi": 300}
+N_FRAMES = {"lo": 100, "hi": 4000}
 OUTPUT_DIR = "frames"
 
 # Bounds of the complex plane
 XMIN, XMAX = -1.5, 1.5
 YMIN, YMAX = -1.5, 1.5
+
+t_space = np.linspace(TBEG, TEND, N_FRAMES[res])
 
 # Create output directory
 os.makedirs(OUTPUT_DIR, exist_ok=True)
@@ -50,10 +57,10 @@ def cardioid_orbit(n, r=0.7885):
     return [r * np.exp(2j * np.pi * t / n) for t in range(n)]
 
 
-def inward_spiral(n, r_start=1.2, r_end=0.75):
+def inward_spiral(n, r_start=1.2, r_end=0.55):
     return [
         r * np.exp(2j * np.pi * t)
-        for r, t in zip(np.linspace(r_start, r_end, n), np.linspace(0, 1, n))
+        for r, t in zip(np.linspace(r_start, r_end, n), np.linspace(0, 2, n))
     ]
 
 
@@ -62,67 +69,80 @@ def real_line(n):
 
 
 def linear_path(c0, c1, n):
-    return [c0 + (c1 - c0) * t for t in np.linspace(0, 1, n)]
+    return [c1 + (c0 - c1) * t for t in t_space]
 
 
 def lissajous(n, a=1.2, b=0.7, fx=3, fy=2, phase=0):
-    return [
-        a * np.sin(fx * t + phase) + 1j * b * np.sin(fy * t)
-        for t in np.linspace(0, 2 * np.pi, n)
-    ]
+    return [a * np.sin(fx * t + phase) + 1j * b * np.sin(fy * t) for t in t_space]
 
 
-def complex_to_pixel(C, xmin, xmax, ymin, ymax, width, height):
-    x_idx = int((C.real - xmin) / (xmax - xmin) * (width - 1))
-    y_idx = int((C.imag - ymin) / (ymax - ymin) * (height - 1))
+def complex_to_pixel(C, xmin, xmax, ymin, ymax, WIDTH, HEIGHT):
+    x_idx = int((C.real - xmin) / (xmax - xmin) * (WIDTH - 1))
+    y_idx = int((C.imag - ymin) / (ymax - ymin) * (HEIGHT - 1))
     return y_idx, x_idx  # row, column (image coordinates)
 
 
 # Precompute grid
-Z0 = make_plane(XMIN, XMAX, YMIN, YMAX, WIDTH, HEIGHT)
+Z0 = make_plane(XMIN, XMAX, YMIN, YMAX, WIDTH[res], HEIGHT[res])
 
 # Colormap
 cmap = get_cmap("inferno").copy()
 cmap.set_bad("black")
 
 # Generate frames
-# for i, C in enumerate(cardioid_orbit(N_FRAMES)):
-# for i, C in enumerate(inward_spiral(N_FRAMES)):
-# for i, C in enumerate(real_line(N_FRAMES)):
-# for i, C in enumerate(linear_path(N_FRAMES)):
-for i, C in enumerate(lissajous(N_FRAMES)):
+# for i, C in enumerate(cardioid_orbit(N_FRAMES[res])):
+for i, C in enumerate(inward_spiral(N_FRAMES[res])):
+    # for i, C in enumerate(real_line(N_FRAMES[res])):
+    # for i, C in enumerate(linear_path(-1.5 + 1.5j, 1.5 - 1.5j, N_FRAMES[res])):
+    # for i, C in enumerate(lissajous(N_FRAMES[res])):
 
-    raw = compute(C, MAX_ITER, Z0)
+    raw = compute(C, MAX_ITER[res], Z0)
 
     with np.errstate(divide="ignore", invalid="ignore"):
         img = np.log(raw + 1).astype(np.float32)
 
-    y, x = complex_to_pixel(C, XMIN, XMAX, YMIN, YMAX, WIDTH, HEIGHT)
+    y, x = complex_to_pixel(C, XMIN, XMAX, YMIN, YMAX, WIDTH[res], HEIGHT[res])
 
     img[raw == -1] = np.nan
     img[raw <= 2] = np.nan
 
     vmin = 0
-    vmax = np.log(MAX_ITER)
+    vmax = np.log(MAX_ITER[res])
 
-    if 0 <= y < HEIGHT and 0 <= x < WIDTH:
+    if 0 <= y < HEIGHT[res] and 0 <= x < WIDTH[res]:
         img[y, x] = np.nanmax(img)  # or vmax if not using dynamic scaling
 
-    # cross
-    for dy, dx in [(-1, 0), (0, -1), (0, 0), (0, 1), (1, 0)]:
-        yi = y + dy
-        xi = x + dx
-        if 0 <= yi < HEIGHT and 0 <= xi < WIDTH:
-            img[yi, xi] = np.log(MAX_ITER)
+    if cross:
+        for dy, dx in [(-1, 0), (0, -1), (0, 0), (0, 1), (1, 0)]:
+            yi = y + dy
+            xi = x + dx
+            if 0 <= yi < HEIGHT[res] and 0 <= xi < WIDTH[res]:
+                img[yi, xi] = np.log(MAX_ITER[res])
 
-    imsave(
-        f"{OUTPUT_DIR}/frame_{i:04d}.png",
-        img,
-        cmap=cmap,
-        vmin=0,
-        vmax=np.log(MAX_ITER),
-    )
+    if res == "hi":
+        imsave(
+            f"{OUTPUT_DIR}/frame_{i:05d}.png",
+            img,
+            cmap=cmap,
+            vmin=0,
+            vmax=np.log(MAX_ITER[res]),
+        )
 
-    print(f"\rSaved frame {i + 1}/{N_FRAMES}", end="")
+    if res == "lo":
+        fig, ax = plt.subplots(figsize=(5, 5), dpi=100)
+        ax.imshow(img, cmap=cmap, vmin=0, vmax=np.log(MAX_ITER[res]))
+        ax.axis("off")
+
+        # Display t value as label
+        t = t_space[i]
+        ax.text(10, 20, f"t = {t:.7f}", color="white", fontsize=12, ha="left", va="top")
+
+        fig.tight_layout(pad=0)
+        fig.savefig(
+            f"{OUTPUT_DIR}/frame_{i:05d}.png", bbox_inches="tight", pad_inches=0
+        )
+        plt.close(fig)
+
+    print(f"\rSaved frame {i + 1}/{N_FRAMES[res]}", end="")
 
 print()
