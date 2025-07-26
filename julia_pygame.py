@@ -15,10 +15,10 @@ YMIN, YMAX = -2.0, 2.0
 
 # Iteration settings
 MAX_ITER_HI = 200
-MAX_ITER_LO = 20
+MAX_ITER_LO = 40
 
 # Resolution settings
-RENDER_RES_HI = 1500
+RENDER_RES_HI = 1200
 RENDER_RES_LO = 80
 
 pygame.init()
