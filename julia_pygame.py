@@ -7,7 +7,7 @@ from numba import njit
 import math
 
 # Window size (always fixed)
-WIDTH, HEIGHT = 2250, 2250
+WIDTH, HEIGHT = 900, 900
 
 # Complex plane bounds
 XMIN, XMAX = -2.0, 2.0
@@ -15,11 +15,11 @@ YMIN, YMAX = -2.0, 2.0
 
 # Iteration settings
 MAX_ITER_HI = 200
-MAX_ITER_LO = 40
+MAX_ITER_LO = 80
 
 # Resolution settings
-RENDER_RES_HI = 1200
-RENDER_RES_LO = 80
+RENDER_RES_HI = 1500
+RENDER_RES_LO = 120
 
 pygame.init()
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
