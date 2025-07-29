@@ -59,6 +59,7 @@ def generate_index(target: Path):
     html.append("<!DOCTYPE html>")
     html.append("<html>")
     html.append("<head>")
+    html.append('  <link rel="icon" type="image/x-icon" href="/favicon.ico?v=2">')
     html.append("  <meta charset='utf-8'>")
     html.append(f"  <title>Index of {title}</title>")
     html.append("<style>")
@@ -78,10 +79,33 @@ def generate_index(target: Path):
     html.append("  .filesize {font-size:8pt}")
     html.append("  a, a:visited {color:lime;text-decoration:none}")
     html.append("  a:hover {text-decoration:underline}")
+    html.append("  .folder-icon {")
+    html.append("        width: 90px;")
+    html.append("        height: 60px;")
+    html.append("      }")
+    html.append("      .folder-icon path {")
+    html.append("        stroke: lime;")
+    html.append("        fill: none;")
+    html.append("        stroke-width: 2;")
+    html.append("      }")
+    html.append("      .folder-icon text {")
+    html.append("        fill: lime;")
+    html.append("        font-family: sans-serif;")
+    html.append("        font-size: 12px;")
+    html.append("      }")
     html.append("</style>")
     html.append("</head>")
     html.append("<body>")
-    html.append(f"  <h1>{title}/</h1>")
+    html.append(
+        '<svg class="folder-icon" viewBox="0 0 24 24" style="height: 1em; width: auto; '
+        "vertical-align: middle; stroke: lime; fill: none; stroke-width: 1; stroke-linejoin: round;"
+        'stroke-linecap: round; font-size: 36px;">'
+    )
+    html.append('   <path d="M3 7h6l2 2h10v11H3z"/>')
+    html.append(" </svg>")
+    html.append(
+        f'<span style="color:lime; margin-left:4px; font-weight: bold; font-family:monospace; font-size:36px; line-height: 1; vertical-align: middle;">{title}/<br><br>'
+    )
     html.append('  <div id="gallery">')
     for name, size_str, href, thumb in entries:
         html.append('    <div class="thumb-cell">')
