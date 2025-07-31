@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # gendex.py
-# @spiralbend 2025-07-23
+# @spiralbend 2025-07-29
 
 import os
 import stat
@@ -87,6 +87,12 @@ TEMPLATE = """<!DOCTYPE html>
     <link rel="icon" type="image/x-icon" href="/favicon.ico?v=2">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    body {{ font-size: 12pt; }}
+    @media (max-width: 800px) {{
+      body {{ font-size: 10pt; }}
+    }}
+  </style>
     <title>Index of /{path}</title>
     <style>
         html,body,pre,span,a {{
