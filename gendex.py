@@ -121,12 +121,10 @@ TEMPLATE = """<!DOCTYPE html>
         }}
         .cursor {{
             display: inline-block;
-            width: 10px;
-            animation: blink 1s steps(2, start) infinite;
-            opacity: 1;
+            animation: blink 1s steps(1) infinite;
         }}
         @keyframes blink {{
-            to {{ opacity: 0; }}
+            50% {{ opacity: 0; }}
         }}
         .prompt {{
             color:orange
