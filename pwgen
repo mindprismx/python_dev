@@ -1,0 +1,12 @@
+#!/usr/bin/perl
+for (1..12) {
+@c = (A..Z,0..9,a..z,0..9);
+for (1..$ARGV[0]) { print $c[(int(rand(72)))] }
+print "  ";
+for (1..5) { print int(rand(10)) }
+open W, "/usr/share/dict/words";
+@w = <W>;
+chomp @w;
+$a = substr($w[int(rand($#w))],0,10);
+print "  " . $a . " " x (10-length($a)) . "  " . $w[int(rand($#w))] . "\n";
+}

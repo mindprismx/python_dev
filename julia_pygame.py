@@ -7,7 +7,7 @@ from numba import njit
 import math
 
 # Window size (always fixed)
-WIDTH, HEIGHT = 900, 900
+WIDTH, HEIGHT = 2000, 2000
 
 # Complex plane bounds
 XMIN, XMAX = -2.0, 2.0

@@ -129,6 +129,9 @@ TEMPLATE = """<!DOCTYPE html>
         .prompt {{
             color:orange
         }}
+        .dir {{
+            color:white
+        }}
     </style>
 </head>
 <body onload="document.getElementById('theDate').textContent = formatLinuxDate()">
@@ -154,12 +157,12 @@ function formatLinuxDate(date = new Date()) {{
 </script>
 <pre>
 
-<span class="prompt">𝜟·</span> ls -lh /{path}
+<span class="prompt">𝜟<span class="dir"><span style="letter-spacing:-0.5ch;"> </span>{dir}</span>·</span> ll
 total {total_size}
 {entries}
-<span class="prompt">𝜟·</span>
-<span class="prompt">𝜟·</span> date<br><span id="theDate"></span>
-<span class="prompt">𝜟·</span> <span class="cursor"><b>_</b></span>
+<span class="prompt">𝜟<span class="dir"><span style="letter-spacing:-0.5ch;"> </span>{dir}</span>·</span>
+<span class="prompt">𝜟<span class="dir"><span style="letter-spacing:-0.5ch;"> </span>{dir}</span>·</span> date<br><span id="theDate"></span>
+<span class="prompt">𝜟<span class="dir"><span style="letter-spacing:-0.5ch;"> </span>{dir}</span>·</span> <span class="cursor"><b>_</b></span>
 </pre>
 </body>
 </html>
@@ -249,7 +252,6 @@ def build_index(dirpath, rel_dir, dirnames, filenames, include_dotfiles):
                 st.st_nlink,
                 st.st_size,
                 datetime.datetime.fromtimestamp(st.st_mtime),
-                # name + ("/" if is_dir else ""),
                 display_name,
                 f"{name}/" if is_dir else name,
                 is_dir,
@@ -260,7 +262,8 @@ def build_index(dirpath, rel_dir, dirnames, filenames, include_dotfiles):
             total_size += st.st_size
 
     return TEMPLATE.format(
-        path=rel_dir if rel_dir != "." else "",
+        path=rel_dir if rel_dir != "." else "~",
+        dir=Path(rel_dir).name,
         entries="\n".join(entries),
         total_size=human_readable_size(total_size),
     )
