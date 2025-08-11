@@ -1,7 +1,7 @@
 import pygame
 import numpy as np
 import sys
-
+#
 W, H = 600, 400  # width, height in cells
 SCALE = 4  # pixel size per cell
 FPS = 60
