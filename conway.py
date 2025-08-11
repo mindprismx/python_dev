@@ -4,7 +4,7 @@ import sys
 
 H = 200
 W = 300
-scale = 8
+scale = 10
 fps = 30
 
 
