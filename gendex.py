@@ -262,7 +262,7 @@ def build_index(dirpath, rel_dir, dirnames, filenames, include_dotfiles):
             total_size += st.st_size
 
     return TEMPLATE.format(
-        path=rel_dir if rel_dir != "." else "~",
+        path=rel_dir if rel_dir != "." else "",
         dir=Path(rel_dir).name,
         entries="\n".join(entries),
         total_size=human_readable_size(total_size),
