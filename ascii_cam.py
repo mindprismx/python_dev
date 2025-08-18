@@ -3,17 +3,16 @@ import sys, os, time, atexit, shutil, argparse, termios, tty, fcntl, select, sig
 import numpy as np
 import cv2
 from datetime import datetime
+import html as htmlmod
 
 DEFAULT_RAMP = (
-    " .'`^\",:;Il!i><~+_-?][}{1)(|\\/*tfjrxnuvczXYUJCLQ0OZ" "mwqpdbkhao*#MW&8%B@$"
+    " .'`^\",:;Il!i><~+_-?][}{1)(|\\/*tfjrxnuvczXYUJCLQ0OZ"
+    "mwqpdbkhao*#MW&8%B@$"
 )
 
 # ---------- robust stdout writing ----------
 _STDOUT_FD = sys.stdout.fileno()
-
-
 def write_all(s: str):
-    """Write the full string to stdout, handling EAGAIN/EINTR."""
     if not s:
         return
     data = s.encode("utf-8", "replace")
@@ -22,7 +21,6 @@ def write_all(s: str):
         try:
             n += os.write(_STDOUT_FD, data[n:])
         except BlockingIOError:
-            # wait until writable
             select.select([], [_STDOUT_FD], [])
             continue
         except InterruptedError:
@@ -33,35 +31,28 @@ def write_all(s: str):
                 continue
             raise
 
-
 def enter_alt():
-    write_all("\x1b[?1049h\x1b[?25l")  # alt buffer + hide cursor
-
+    write_all("\x1b[?1049h\x1b[?25l")
 
 def exit_alt():
-    write_all("\x1b[0m\x1b[?25h\x1b[?1049l")  # reset + show cursor + leave alt
-
+    write_all("\x1b[0m\x1b[?25h\x1b[?1049l")
 
 class RawStdin:
     def __init__(self):
         self.fd = sys.stdin.fileno()
         self.old_tc = termios.tcgetattr(self.fd)
         self.old_fl = fcntl.fcntl(self.fd, fcntl.F_GETFL)
-
     def __enter__(self):
         tty.setcbreak(self.fd)
         fcntl.fcntl(self.fd, fcntl.F_SETFL, self.old_fl | os.O_NONBLOCK)
         return self
-
     def __exit__(self, exc_type, exc, tb):
         termios.tcsetattr(self.fd, termios.TCSADRAIN, self.old_tc)
         fcntl.fcntl(self.fd, fcntl.F_SETFL, self.old_fl)
 
-
 def get_term_size():
     size = shutil.get_terminal_size(fallback=(80, 24))
     return size.columns, max(1, size.lines)
-
 
 def center_crop(frame, target_aspect):
     h, w = frame.shape[:2]
@@ -69,12 +60,11 @@ def center_crop(frame, target_aspect):
     if aspect > target_aspect:
         new_w = int(h * target_aspect)
         x0 = (w - new_w) // 2
-        return frame[:, x0 : x0 + new_w]
+        return frame[:, x0:x0 + new_w]
     else:
         new_h = int(w / target_aspect)
         y0 = (h - new_h) // 2
-        return frame[y0 : y0 + new_h, :]
-
+        return frame[y0:y0 + new_h, :]
 
 def apply_tonemap(gray_u8, contrast, brightness, gamma):
     g = gray_u8.astype(np.float32) / 255.0
@@ -84,36 +74,41 @@ def apply_tonemap(gray_u8, contrast, brightness, gamma):
         g = np.power(g, 1.0 / gamma)
     return (g * 255.0 + 0.5).astype(np.uint8)
 
-
 def img_to_ascii(gray, lut):
     idx = (gray.astype(np.uint16) * (lut.size - 1)) // 255
     return lut[idx]  # HxW '<U1'
 
-
 def set_xterm_font_px(px):
     write_all(f"\x1b]50;xft:Monospace:pixelsize={px}\x07")
 
-
 # ---- xterm-256 color helpers ----
-def _to_6cube(v):
-    return int(round(v * (5.0 / 255.0)))
-
-
+def _to_6cube(v): return int(round(v * (5.0/255.0)))
+def _cube_level(i): return [0, 95, 135, 175, 215, 255][i]
 def _grey_index(v):
-    if v < 8:
-        return 16
-    if v > 248:
-        return 231
+    if v < 8: return 16  # push near-black to cube black
+    if v > 248: return 231  # cube white
     return 232 + int(round(((v - 8) / 247.0) * 24))
-
 
 def rgb_to_xterm256(r, g, b):
     r6, g6, b6 = _to_6cube(r), _to_6cube(g), _to_6cube(b)
-    idx_cube = 16 + 36 * r6 + 6 * g6 + b6
+    idx_cube = 16 + 36*r6 + 6*g6 + b6
     if abs(r - g) + abs(g - b) + abs(b - r) < 24:
         return _grey_index((r + g + b) // 3)
     return idx_cube
 
+def xterm256_to_rgb(idx):
+    if 16 <= idx <= 231:
+        c = idx - 16
+        r6 = c // 36
+        g6 = (c % 36) // 6
+        b6 = c % 6
+        return _cube_level(r6), _cube_level(g6), _cube_level(b6)
+    if 232 <= idx <= 255:
+        level = 8 + 10 * (idx - 232)
+        level = max(0, min(255, level))
+        return level, level, level
+    # 0..15: only 16 (black) should occur from our mapper; fall back to black
+    return 0, 0, 0
 
 def build_color_row(chars_row, rgb_row):
     Wc = chars_row.shape[0]
@@ -131,10 +126,51 @@ def build_color_row(chars_row, rgb_row):
     out.append("\x1b[0m")
     return "".join(out)
 
-
 def timestamp():
     return datetime.now().strftime("%Y%m%d_%H%M%S_%f")[:-3]
 
+# ---- NEW: save HTML with color support ----
+def save_ascii_html(chars, rgb_image, path, bg="#000000", font_family="monospace", font_px=16, quantize_xterm=True):
+    """
+    chars: HxW array of 1-char strings (unicode)
+    rgb_image: HxWx3 uint8, same grid size as chars (already resized)
+    Writes an HTML file with colored ASCII using grouped <span> runs.
+    """
+    H, W = chars.shape
+    with open(path, "w", encoding="utf-8") as f:
+        f.write("<!doctype html><meta charset='utf-8'>")
+        f.write(
+            "<style>"
+            "body{margin:0;background:%s;}"
+            "pre{line-height:1; font-family:%s; font-size:%dpx;}"
+            "</style><pre>" % (bg, font_family, font_px)
+        )
+        for r in range(H):
+            last_hex = None
+            run = []
+            def flush():
+                nonlocal run, last_hex
+                if not run: return
+                text = htmlmod.escape("".join(run))
+                if last_hex:
+                    f.write(f"<span style=\"color:{last_hex}\">{text}</span>")
+                else:
+                    f.write(text)
+                run = []
+            for i in range(W):
+                R, G, B = map(int, rgb_image[r, i])
+                if quantize_xterm:
+                    idx = rgb_to_xterm256(R, G, B)
+                    R, G, B = xterm256_to_rgb(idx)
+                hexcol = f"#{R:02x}{G:02x}{B:02x}"
+                if hexcol != last_hex:
+                    flush()
+                    last_hex = hexcol
+                run.append(chars[r, i])
+            flush()
+            if r < H - 1:
+                f.write("\n")
+        f.write("</pre>")
 
 def main():
     ap = argparse.ArgumentParser(description="Live ASCII camera in your terminal.")
@@ -168,7 +204,6 @@ def main():
     def current_lut():
         r = base_ramp[::-1] if invert_chars else base_ramp
         return np.array(list(r), dtype="<U1")
-
     lut = current_lut()
 
     os.makedirs(args.outdir, exist_ok=True)
@@ -190,11 +225,9 @@ def main():
     def on_sigint(sig, frm):
         nonlocal running
         running = False
-
     def on_winch(sig, frm):
         nonlocal need_resize
         need_resize = True
-
     signal.signal(signal.SIGINT, on_sigint)
     try:
         signal.signal(signal.SIGWINCH, on_winch)
@@ -255,7 +288,6 @@ def main():
                     cols, rows = get_term_size()
                     write_all("\x1b[2J\x1b[H")
 
-                # reserve a HUD row if possible
                 rows_for_image = max(1, rows - (1 if rows >= 3 and hud_enabled else 0))
                 target_aspect = cols / (rows_for_image * args.char_aspect)
 
@@ -277,19 +309,16 @@ def main():
                 gray_small = cv2.resize(gray_tm, (W, H), interpolation=cv2.INTER_AREA)
                 chars = img_to_ascii(gray_small, lut)
 
-                # optional color buffer built to the same snapped size
-                if color_enabled:
-                    try:
-                        rgb_small = cv2.cvtColor(
-                            cv2.resize(cropped, (W, H), interpolation=cv2.INTER_AREA),
-                            cv2.COLOR_BGR2RGB,
-                        )
-                    except Exception as e:
-                        color_enabled = False
-                        last_error = f"color off: {type(e).__name__}"
-                        error_until = time.perf_counter() + 3.0
+                # color buffer to same snapped size (for terminal and for HTML)
+                try:
+                    rgb_small = cv2.cvtColor(
+                        cv2.resize(cropped, (W, H), interpolation=cv2.INTER_AREA),
+                        cv2.COLOR_BGR2RGB
+                    )
+                except Exception:
+                    rgb_small = np.repeat(gray_small[..., None], 3, axis=2)
 
-                # render (single home, then rows)
+                # render
                 write_all("\x1b[H")
                 if color_enabled:
                     try:
@@ -301,7 +330,6 @@ def main():
                         color_enabled = False
                         last_error = f"color off: {type(e).__name__}"
                         error_until = time.perf_counter() + 3.0
-                        # fall back to mono this frame
                         write_all("\x1b[H" + "\n".join("".join(row) for row in chars))
                 else:
                     write_all("\n".join("".join(row) for row in chars))
@@ -312,10 +340,13 @@ def main():
                     ts = timestamp()
                     png_path = os.path.join(args.outdir, f"ascii_cam_{ts}.png")
                     txt_path = os.path.join(args.outdir, f"ascii_cam_{ts}.txt")
+                    html_path = os.path.join(args.outdir, f"ascii_cam_{ts}.html")
                     try:
                         cv2.imwrite(png_path, cropped)
                         with open(txt_path, "w", encoding="utf-8") as f:
                             f.write("\n".join("".join(row) for row in chars))
+                        # HTML: quantize to xterm-256 for the look/size
+                        save_ascii_html(chars, rgb_small, html_path, bg="#000000", font_px=8, quantize_xterm=True)
                         last_error = "saved"
                     except Exception as e:
                         last_error = f"save err: {type(e).__name__}"
@@ -339,9 +370,8 @@ def main():
                         f"{status:<10}  "
                         "keys: [-/+]B  (-/=)C  (,/.)G  c color  m mirror  i invert  0 reset  SPACE save  q quit "
                     )
-                    write_all("\x1b[0m")  # uncolor HUD
-                    if len(hud) < cols:
-                        hud = hud + " " * (cols - len(hud))
+                    write_all("\x1b[0m")
+                    if len(hud) < cols: hud = hud + " " * (cols - len(hud))
                     write_all("\n" + hud[:cols])
 
                 # pace
@@ -356,7 +386,6 @@ def main():
             raise
         finally:
             cap.release()
-
 
 if __name__ == "__main__":
     main()
