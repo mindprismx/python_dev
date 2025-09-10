@@ -3,12 +3,21 @@
 wlogs.py — count most frequent values for a given JSON field across log files.
 
 Usage:
-  wlogs.py [member] [top]
+  wlogs.py [-h] [-v] [member] [top]
+
+Options:
+  -h      Scan logs and print all JSON member paths discovered (dot paths), then exit
+  -v      Verbose: print the summary line at the end of a normal run
+
+Args:
+  member  JSON field (dot.notation allowed). Default: ip
+  top     Number of top results to print. Default: 10
 
 Examples:
   wlogs.py
   wlogs.py ip 20
-  wlogs.py request.client_ip 50
+  wlogs.py -v request.client_ip 50
+  wlogs.py -h
 """
 
 from __future__ import annotations
@@ -36,18 +45,42 @@ CASEFOLD: bool = False  # case-fold string values before counting
 # -------------------------------------------------
 
 
-def parse_args(argv: list[str]) -> tuple[str, int]:
+def usage() -> None:
+    print(__doc__.strip())
+
+
+def parse_args(argv: list[str]) -> tuple[str, int, bool, bool]:
+    """
+    Returns: (member, top, list_members_flag, verbose_flag)
+    """
     member = "ip"
     top = 10
-    if len(argv) >= 2 and argv[1]:
-        member = argv[1]
-    if len(argv) >= 3 and argv[2]:
+    list_members_flag = False
+    verbose_flag = False
+    positional: list[str] = []
+
+    for a in argv[1:]:
+        if a == "-h":
+            list_members_flag = True
+        elif a == "-v":
+            verbose_flag = True
+        elif a.startswith("-"):
+            print(f"unknown option: {a}", file=sys.stderr)
+            usage()
+            sys.exit(2)
+        else:
+            positional.append(a)
+
+    if len(positional) >= 1 and positional[0]:
+        member = positional[0]
+    if len(positional) >= 2 and positional[1]:
         try:
-            top = int(argv[2])
+            top = int(positional[1])
         except ValueError:
-            print(f"invalid top '{argv[2]}', using default 10", file=sys.stderr)
+            print(f"invalid top '{positional[1]}', using default 10", file=sys.stderr)
             top = 10
-    return member, top
+
+    return member, top, list_members_flag, verbose_flag
 
 
 def iter_files(root: Path, pattern: str) -> Iterator[Path]:
@@ -175,7 +208,7 @@ def iter_timestamps(obj: Any) -> Iterator[datetime]:
 def fmt_dt(dt: Optional[datetime]) -> str:
     if not dt:
         return "n/a"
-    return dt.astimezone(timezone.utc).isoformat()
+    return dt.astimezone(timezone.utc).strftime("%m-%d-%y %H:%M:%S")
 
 
 def normalize_asn(value: Union[str, int]) -> Optional[str]:
@@ -226,8 +259,41 @@ def print_table(member: str, counter: Counter, top: int) -> None:
             print(f"{str(k).ljust(max_val_width)}   {str(v).rjust(max_count_width)}")
 
 
+# -------- -h support: enumerate JSON member paths --------
+def iter_member_paths(obj: Any, prefix: str = "") -> Iterator[str]:
+    if isinstance(obj, dict):
+        for k, v in obj.items():
+            path = f"{prefix}.{k}" if prefix else k
+            yield path
+            yield from iter_member_paths(v, path)
+    elif isinstance(obj, list):
+        for i, v in enumerate(obj):
+            path = f"{prefix}.{i}" if prefix else str(i)
+            yield path
+            yield from iter_member_paths(v, path)
+
+
+def list_members(root: Path) -> None:
+    seen: set[str] = set()
+    for p in iter_files(root, GLOB):
+        for obj in json_objects_from_file(p):
+            for path in iter_member_paths(obj):
+                seen.add(path)
+    for path in sorted(seen):
+        print(path)
+
+
+# ---------------------------------------------------------
+
+
 def main() -> None:
-    member, top = parse_args(sys.argv)
+    member, top, list_flag, verbose = parse_args(sys.argv)
+
+    if list_flag:
+        # -h: list discovered JSON member paths and exit
+        list_members(ROOT)
+        return
+
     counter: Counter = Counter()
     files_scanned = 0
     objs_seen = 0
@@ -253,18 +319,22 @@ def main() -> None:
 
     if not counter:
         print(f"(no values found for member '{member}' under {ROOT})")
-        print(
-            f"# files={files_scanned} objects={objs_seen} unique=0 earliest={fmt_dt(earliest)} latest={fmt_dt(latest)}",
-            file=sys.stderr,
-        )
+        if verbose:
+            print(
+                f"# files={files_scanned} objects={objs_seen} unique=0 "
+                f"earliest={fmt_dt(earliest)} latest={fmt_dt(latest)}",
+                file=sys.stderr,
+            )
         return
 
     print_table(member, counter, top)
 
-    # print(
-    #     f"# files={files_scanned} objects={objs_seen} unique={len(counter)} earliest={fmt_dt(earliest)} latest={fmt_dt(latest)}",
-    #     file=sys.stderr,
-    # )
+    if verbose:
+        print(
+            f"# files={files_scanned} objects={objs_seen} unique={len(counter)} "
+            f"earliest={fmt_dt(earliest)} latest={fmt_dt(latest)}",
+            file=sys.stderr,
+        )
 
 
 if __name__ == "__main__":

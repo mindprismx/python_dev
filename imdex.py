@@ -117,12 +117,27 @@ def generate_index(target: Path):
     html.append("</body>")
     html.append("</html>")
 
-    # Write index.html
     out = target / "index.html"
-    with open(out, "w", encoding="utf-8") as f:
-        f.write("\n".join(html))
-    print(f"Generated {out}")
+    new_content = "\n".join(html)
 
+    # Check if file exists and compare content
+    should_write = True
+    if out.exists():
+        try:
+            with open(out, "r", encoding="utf-8") as f:
+                existing_content = f.read()
+            
+            if existing_content == new_content:
+                should_write = False
+                print(f"Skipped {out} (no changes)")
+        except (IOError, UnicodeDecodeError) as e:
+            print(f"Warning: Could not read existing {out}: {e}")
+            # Continue with write if we can't read the existing file
+
+    if should_write:
+        with open(out, "w", encoding="utf-8") as f:
+            f.write(new_content)
+        print(f"Generated {out}")
 
 if __name__ == "__main__":
     dir_arg = Path(sys.argv[1]) if len(sys.argv) > 1 else Path.cwd()

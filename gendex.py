@@ -160,7 +160,6 @@ function formatLinuxDate(date = new Date()) {{
 <span class="prompt">𝜟<span class="dir"><span style="letter-spacing:-0.5ch;"> </span>{dir}</span>·</span> ll
 total {total_size}
 {entries}
-<span class="prompt">𝜟<span class="dir"><span style="letter-spacing:-0.5ch;"> </span>{dir}</span>·</span>
 <span class="prompt">𝜟<span class="dir"><span style="letter-spacing:-0.5ch;"> </span>{dir}</span>·</span> date<br><span id="theDate"></span>
 <span class="prompt">𝜟<span class="dir"><span style="letter-spacing:-0.5ch;"> </span>{dir}</span>·</span> <span class="cursor"><b>_</b></span>
 </pre>
@@ -235,7 +234,7 @@ def build_index(dirpath, rel_dir, dirnames, filenames, include_dotfiles):
     all_entries = sorted(dirnames + filenames, key=str.lower)
     all_entries = [n for n in all_entries if n.lower() != "index.html"]
     for name in all_entries:
-        if not include_dotfiles and name.startswith("."):
+        if not include_dotfiles and name.startswith((".", "__")):
             continue
         full_path = os.path.join(dirpath, name)
         try:
@@ -280,7 +279,7 @@ def process_dir(root, include_dotfiles=False, verbose=False, no_depth=False):
         if (
             rel_dir != "."
             and not include_dotfiles
-            and any(part.startswith(".") for part in rel_dir.split(os.sep))
+            and any(part.startswith((".", "__")) for part in rel_dir.split(os.sep))
         ):
             continue
 
