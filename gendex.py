@@ -205,6 +205,8 @@ def format_entry(mode, nlink, size, mtime, name, href, is_dir, full_path):
         date_str = mtime.strftime("%b %e  %Y")
     else:
         date_str = mtime.strftime("%b %e %H:%M")
+    if name == "..":
+        date_str = "Jun 26 09:16"
     style = get_color_style(os.lstat(full_path).st_mode, full_path)
     style_attr = f' style="{style}"' if style else ""
     link = f'<a href="{href}"{style_attr}>{name}</a>'
